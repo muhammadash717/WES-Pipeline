@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ file_basename }}</title>
+    <style>
+        body {
+            font-family: system-ui;
+            margin: 20px;
+            background-color: #f4f4f4;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        hr {
+            color: white;
+        }
+
+        /* Layout and Form Elements */
+        .row_counts, .button-container {
+            display: flex;
+            align-items: center;
+            margin-top: 10px;
+        }
+        .row_counts div {
+            margin-right: 20px;
+            margin-bottom: 10px;
+        }
+        form {
+            margin-bottom: 20px;
+        }
+
+        /* Table */
+        table {
+            width: 100%;
+            margin: 20px 0;
+            background-color: #fff;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            table-layout: fixed;
+        }
+        thead {
+            position: sticky;
+            top: 0;
+            z-index: 9999;
+        }
+        th, td {
+            padding: 5px;
+            border: 1px solid #ccc;
+            text-align: center;
+            position: relative;
+        }
+        th {
+            background-color: #007BFF;
+            color: white;
+            cursor: pointer;
+        }
+        td {
+            overflow-x: hidden;
+        }
+        th:hover {
+            background-color: #0056b3
+        }
+        tr:hover {
+            background-color: #f1f1f1;
+        }
+
+        /* Inputs and Buttons */
+        input[type="text"] {
+            width: 95%;
+            padding: 5px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+        input[type="checkbox"] {
+            cursor: pointer;
+        }
+        button {
+            padding: 8px;
+            background-color: #007bff;
+            color: white;
+            font-weight: bold;
+            border-radius: 4px;
+            border: none;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        /* Filtering/Utility */
+        .column_filtering {
+            cursor: pointer;
+            text-decoration: underline;
+            font-style: italic;
+            margin-left: 20px;
+        }
+        .resizer {
+            position: absolute;
+            right: 0;
+            top: 0;
+            width: 5px;
+            height: 100%;
+            background-color: #979595;
+            cursor: col-resize;
+            z-index: 10;
+        }
+        p {
+            color: #757575;      /* Change this to any color, e.g., "red" or "#ff0000" */
+            font-style: italic;  /* Makes the text italic */
+            margin-top: 20px;    /* Adjust top margin */
+            margin-bottom: 0px; /* Adjust bottom margin */
+        }
+    </style>
+</head>
+
+<body>
+    <h1>🧬 {{ file_basename }} 🩻</h1>
+    <input type="hidden" name="filepath" value="{{ filepath }}">
+    <hr>
+
+    <!-- Column Visibility Toggle -->
+    <div class="column-toggle">
+        <input type="checkbox" id="select-all-{{ table }}" checked onclick="toggleSelectAll(this)">
+        <label><b>Select All</b></label>
+        {% for title in titles %}
+            <input class="checkbox-item" type="checkbox" checked onchange="toggleColumnVisibility({{ loop.index0 + 1 }})">
+            <label for="col{{ loop.index0 }}">{{ title }}</label>
+        {% endfor %}
+    </div>
+
+    <p>"Hide the last <b>three</b> columns for a more user-friendly view."</p>
+
+    <!-- Buttons -->
+    <button type="submit">Export Variants 💾</button>
+    <span class="column_filtering" onclick="showSelected()">Show Selected</span>
+    <span class="column_filtering" onclick="resetFilters()">Reset Filters</span>
+    <span class="column_filtering" onclick="applyACMGfilter()">P/LP variants</span>
+    <span class="column_filtering" onclick="applyHOMOfilter()">Homozygous</span>
+    <span class="column_filtering" onclick="applySECONDARYfilter()">Secondary + Carrier Findings</span>
+
+    <!-- Row Counts and Search -->
+    <div class="row_counts">
+        <div>Total: <b>{{ num_rows }}</b></div>
+        <div id="selectedCount">Selected: 0</div>
+    </div>
+    <input type="text" id="searchInput" placeholder="Search entire table...">
+
+    <!-- Data Table -->
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 0.5px;">Report</th>
+                {% for title in titles %}
+                    <th>{{ title }}</th>
+                {% endfor %}
+            </tr>
+            <tr>
+                <th style="background-color: #f1f1f1;">🥼🩺</th>
+                {% for title in titles %}
+                    <th><input type="text" class="filter-input" placeholder="filter {{ title }} ..."></th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in tables[0].split('<tr>')[1:] %}
+                <tr>
+                    <td>
+                        <select class="row_type">
+                            <option value="">-</option>
+                            <option value="Primary">Primary</option>
+                            <option value="Secondary">Secondary</option>
+                            <option value="Attached">Attached</option>
+                        </select>
+                    </td>
+
+                    {{ row|safe }}
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- Script -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const searchInput = document.getElementById('searchInput');
+            const table = document.querySelector('table');
+            const headers = table.querySelectorAll('th');
+            const rows = Array.from(table.querySelectorAll('tbody tr'));
+            const columnFilters = document.querySelectorAll('.filter-input');
+            const typeSelectors = document.querySelectorAll('.row_type');
+            const selectedCountDisplay = document.getElementById('selectedCount');
+            const downloadButton = document.querySelector('button[type="submit"]');
+
+            /* Update Selected Count */
+            function updateSelectedCount() {
+            const selectedCount = Array.from(typeSelectors)
+            .filter(sel => sel.value === "Primary" || sel.value === "Secondary" || sel.value === "Attached")
+            .length;
+            selectedCountDisplay.textContent = `Selected: ${selectedCount}`;
+            }
+            typeSelectors.forEach(sel => sel.addEventListener('change', updateSelectedCount));
+            updateSelectedCount();
+
+            /* Search Entire Table */
+            searchInput.addEventListener('input', () => {
+                const query = searchInput.value.toLowerCase();
+                rows.forEach(row => {
+                    const text = row.textContent.toLowerCase();
+                    row.style.display = text.includes(query) ? '' : 'none';
+                });
+            });
+
+            /* Column Filters */
+            columnFilters.forEach((filter) => {
+                filter.addEventListener('input', applyMultiColumnFilters);
+            });
+
+            function applyMultiColumnFilters() {
+                rows.forEach(row => {
+                    let visible = true;
+
+                    columnFilters.forEach((filter, colIndex) => {
+                        const query = filter.value.trim().toLowerCase();
+                        const cellText = row.children[colIndex + 1].textContent.toLowerCase();
+
+                        if (!query) return;
+
+                        if (query.startsWith('^')) {
+                            const excludeValue = query.substring(1);
+                            if (cellText.includes(excludeValue)) visible = false;
+                        } else if (/^([<>]=?|=)\s*(-?\d+(\.\d+)?)$/.test(query)) {
+                            const [_, operator, value] = query.match(/^([<>]=?|=)\s*(-?\d+(\.\d+)?)$/);
+                            const cellValue = parseFloat(cellText);
+                            const filterValue = parseFloat(value);
+                            if (operator === '>' && !(cellValue > filterValue)) visible = false;
+                            if (operator === '>=' && !(cellValue >= filterValue)) visible = false;
+                            if (operator === '<' && !(cellValue < filterValue)) visible = false;
+                            if (operator === '<=' && !(cellValue <= filterValue)) visible = false;
+                            if (operator === '=' && !(cellValue === filterValue)) visible = false;
+                        } else if (query.includes('&&') || query.includes('||')) {
+                            const andTerms = query.split('&&').map(term => term.trim());
+                            const orTerms = query.split('||').map(term => term.trim());
+                            if (andTerms.length > 1) {
+                                if (!andTerms.every(term => new RegExp('\\b' + term + '\\b', 'i').test(cellText))) visible = false;
+                            } else if (orTerms.length > 1) {
+                                if (!orTerms.some(term => new RegExp('\\b' + term + '\\b', 'i').test(cellText))) visible = false;
+                            } else {
+                                if (!cellText.includes(query)) visible = false;
+                            }
+                        } else {
+                            const andTerms = query.split('&').map(term => term.trim());
+                            const orTerms = query.split('|').map(term => term.trim());
+
+                            if (andTerms.length > 1) {
+                                if (!andTerms.every(term => cellText.includes(term))) visible = false;
+                            } else if (orTerms.length > 1) {
+                                if (!orTerms.some(term => cellText.includes(term))) visible = false;
+                            } else {
+                                if (!cellText.includes(query)) visible = false;
+                            }
+                        }
+                    });
+
+                    row.style.display = visible ? '' : 'none';
+                });
+            }
+
+            /* Show Selected Rows */
+            window.showSelected = () => {
+                const rows = document.querySelectorAll('table tbody tr');
+                rows.forEach(row => {
+                    const typeSel = row.querySelector('.row_type');
+                    if (typeSel && ["Primary", "Secondary", "Attached"].includes(typeSel.value)) {
+                        row.style.display = '';
+                    } else {
+                        row.style.display = 'none';
+                    }
+                });
+            };
+
+
+            /* Clear Filters */
+            window.resetFilters = () => {
+                searchInput.value = '';
+                searchInput.dispatchEvent(new Event('input'));
+
+                columnFilters.forEach(filter => {
+                    filter.value = '';
+                    filter.dispatchEvent(new Event('input'));
+                });
+
+                // Show all rows again
+                document.querySelectorAll('table tbody tr').forEach(row => {
+                    row.style.display = '';
+                });
+            };
+
+
+            /* Predefined Filters */
+            window.applyACMGfilter = () => {
+                resetFilters();
+                columnFilters[4].value = 'pathogenic';
+                columnFilters[4].dispatchEvent(new Event('input'));
+            };
+
+            window.applyHOMOfilter = () => {
+                resetFilters();
+                columnFilters[6].value = 'hom|hemi';
+                columnFilters[6].dispatchEvent(new Event('input'));
+            };
+
+            window.applySECONDARYfilter = () => {
+                resetFilters();
+                columnFilters[4].value = 'pathogenic';
+                columnFilters[4].dispatchEvent(new Event('input'));
+
+                columnFilters[5].value = 'ABCC8|ACTA2|ACTC1|ACVRL1|ASPA|APC|APOB|ATP7B|BAG3|BCKDHA|BCKDHB|BLM|BMPR1A|BRCA1|BRCA2|BTD|CACNA1S|CALM1|CALM2|CALM3|CASQ2|CDH23|CFTR|COL3A1|CLRN1|DBT|DES|DSC2|DSG2|DSP|ELP1|ENG|FANCC|FBN1|FLNC|GAA|GBA|GLA|G6PC|HBB|HFE|HEXA|HNF1A|IKBKAP|KCNH2|KCNQ1|LDLR|LMNA|MAX|MCOLN1|MEN1|MLH1|MSH2|MSH6|MUTYH|MYBPC3|MYH11|MYH7|MYL2|MYL3|NF2|NPC1|OTC|PALB2|PCDH15|PCSK9|PKP2|PMS2|PRKAG2|PTEN|RB1|RBM20|RET|RPE65|RYR1|RYR2|SCN5A|SDHAF2|SDHB|SDHC|SDHD|SMAD3|SMAD4|STK11|SMPD1|TGFBR1|TGFBR2|TMEM127|TMEM216|TMEM43|TNNC1|TNNI3|TNNT2|TP53|TPM1|TRDN|TSC1|TSC2|TTN|TTR|USH2A|VHL|WT1';
+                columnFilters[5].dispatchEvent(new Event('input'));
+            };
+
+            /* Column Visibility Toggle */
+            window.toggleColumnVisibility = function (columnIndex, show = undefined) {
+                const rows = table.querySelectorAll('tr');
+                rows.forEach(row => {
+                    const cells = row.querySelectorAll('th, td');
+                    if (cells[columnIndex]) {
+                        cells[columnIndex].style.display = show === undefined
+                            ? (cells[columnIndex].style.display === 'none' ? '' : 'none')
+                            : (show ? '' : 'none');
+                    }
+                });
+            };
+
+            window.toggleSelectAll = function (source) {
+                const checkboxes = document.querySelectorAll('.checkbox-item');
+                const showColumns = source.checked;
+                checkboxes.forEach((cb, index) => {
+                    cb.checked = showColumns;
+                    toggleColumnVisibility(index + 1, showColumns);
+                });
+            };
+
+            /* Download Selected Rows */
+            downloadButton.addEventListener('click', function () {
+                const selectedRows = Array.from(document.querySelectorAll('tbody tr'))
+                    .filter(row => {
+                        const typeSel = row.querySelector('.row_type');
+                        return typeSel && typeSel.value;
+                    })
+                    .map(row => {
+                        const type = row.querySelector('.row_type').value;
+                        const dataCells = Array.from(row.querySelectorAll('td')).slice(1);
+                        const rowData = [type, ...dataCells.map(td => td.textContent.trim())];
+                        return rowData.join('\t');
+                    });
+
+                if (!selectedRows.length) {
+                    alert('No rows selected!');
+                    return;
+                }
+
+                const headerCells = Array.from(table.querySelectorAll('thead tr:nth-child(1) th'));
+                const header = Array.from(table.querySelectorAll('th')).map(th => th.textContent.trim()).join('\t');
+                const data = [header, ...selectedRows].join('\n');
+
+
+                const blob = new Blob([data], { type: 'text/tsv' });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = '{{ file_basename }}.tsv';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(a.href);
+            });
+
+            /* Column Resizing */
+            headers.forEach(header => {
+                const resizer = document.createElement('div');
+                resizer.classList.add('resizer');
+                header.appendChild(resizer);
+
+                let isResizing = false;
+                let startX, startWidth;
+
+                resizer.addEventListener('mousedown', e => {
+                    isResizing = true;
+                    startX = e.clientX;
+                    startWidth = header.offsetWidth;
+                    document.addEventListener('mousemove', resizeColumn);
+                    document.addEventListener('mouseup', stopResize);
+                });
+
+                function resizeColumn(e) {
+                    if (isResizing) {
+                        const newWidth = startWidth + (e.clientX - startX);
+                        header.style.width = `${newWidth}px`;
+                    }
+                }
+
+                function stopResize() {
+                    isResizing = false;
+                    document.removeEventListener('mousemove', resizeColumn);
+                    document.removeEventListener('mouseup', stopResize);
+                }
+            });
+
+            // Function to auto-adjust column widths based on content
+            function adjustColumnWidths() {
+                headers.forEach((header, index) => {
+                    let maxWidth = header.offsetWidth - 5; // Start with header width
+
+                    rows.forEach(row => {
+                        const cell = row.children[index];
+                        if (cell) {
+                            const contentWidth = cell.scrollWidth - 5;
+                            if (contentWidth > maxWidth) {
+                                maxWidth = contentWidth;
+                            }
+                        }
+                    });
+
+                    if (maxWidth > 200) {
+                        maxWidth = 200;
+                    }
+                    else if (maxWidth < 50) {
+                        maxWidth = 50;
+                    }
+                    header.style.width = `${maxWidth}px`;
+                });
+            }
+
+            // Run adjustment on page load
+            adjustColumnWidths();
+
+            /* Column Sorting */
+            headers.forEach((header, index) => {
+                header.addEventListener('dblclick', () => {
+                    const isAscending = header.classList.toggle('asc');
+                    const sorted = [...rows].sort((a, b) => {
+                        const aVal = a.children[index].textContent.trim();
+                        const bVal = b.children[index].textContent.trim();
+                        return isAscending ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+                    });
+                    const tbody = table.querySelector('tbody');
+                    tbody.innerHTML = '';
+                    sorted.forEach(row => tbody.appendChild(row));
+                });
+            });
+        });
+    </script>
+</body>
+</html>
