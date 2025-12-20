@@ -37,7 +37,6 @@ WORKING_DIR=$(pwd)
 # Install GATK
 wget 'https://github.com/broadinstitute/gatk/releases/download/4.6.1.0/gatk-4.6.1.0.zip'
 unzip gatk-4.6.1.0.zip
-***
 rm gatk-4.6.1.0.zip
 
 # Install HTSlib
@@ -113,7 +112,8 @@ rm gatk-4.6.1.0.zip
     mkdir GRCh38
     curl -L 'ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/001/405/GCA_000001405.15_GRCh38/seqs_for_alignment_pipelines.ucsc_ids/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna.gz' | \
     zcat > ./GRCh38/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna
-    java -Xmx${MEMORY}G ${JAVA_OPTIONS} -jar ${GATK_LOCAL_JAR} CreateSequenceDictionary -R ./GRCh38/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna
+    java -jar gatk-4.6.1.0/gatk-package-4.6.1.0-local.jar CreateSequenceDictionary -R \
+    ./GRCh38/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna
     bwa-mem2 index ./GRCh38/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna
     samtools faidx ./GRCh38/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna
 
