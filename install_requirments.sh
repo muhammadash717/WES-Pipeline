@@ -79,7 +79,7 @@ rm gatk-4.6.1.0.zip
         grep "^chr${i}\s" "${BED}" | awk '{FS=OFS="\t"} {print $1, $2-20, $3+20}' >> twist_exome_bed_files/"${BED%targets*}"_flanking_20bp.bed
     done
 
-    rm ${BED}
+    rm "${BED}"
 
 # Install FastQC
     wget https://www.bioinformatics.babraham.ac.uk/projects/fastqc/fastqc_v0.12.1.zip
