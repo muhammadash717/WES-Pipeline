@@ -31,6 +31,7 @@ apt-get update && apt-get install -y \
     pip3 install -r ./scripts/python-requirements.txt
 
 mkdir -p tools
+rm -rf tools/*
 cd tools
 WORKING_DIR=$(pwd)
 
