@@ -1,6 +1,12 @@
+#!/usr/bin/env bash
+
+if [[ $EUID -ne 0 ]]; then
+  echo "This script must be run as root"
+  exit 1
+fi
 
 # Install Install basic dependencies
-sudo apt-get update && sudo apt-get install -y \
+apt-get update && apt-get install -y \
     wget \
     curl \
     unzip \
@@ -20,7 +26,7 @@ sudo apt-get update && sudo apt-get install -y \
     openjdk-21-jre
 
 # Install Python packages
-pip3 install -r ./scripts/python-requirements.txt
+    pip3 install -r ./scripts/python-requirements.txt
 
 mkdir -p tools
 cd tools
@@ -36,8 +42,8 @@ rm gatk-4.6.1.0.zip
     curl -L 'https://github.com/samtools/htslib/releases/download/1.22.1/htslib-1.22.1.tar.bz2' | tar jxf -
     cd htslib-1.22.1
     ./configure
-    sudo make
-    sudo make install
+    make
+    make install
     cd ..
     export PATH="${WORKING_DIR}"/htslib-1.22.1:$PATH
 
@@ -45,8 +51,8 @@ rm gatk-4.6.1.0.zip
     curl -L 'https://github.com/samtools/samtools/releases/download/1.22.1/samtools-1.22.1.tar.bz2' | tar jxf -
     cd samtools-1.22.1
     ./configure
-    sudo make
-    sudo make install
+    make
+    make install
     cd ..
     export PATH="${WORKING_DIR}"/samtools-1.22.1:$PATH
 
@@ -54,8 +60,8 @@ rm gatk-4.6.1.0.zip
     curl -L 'https://github.com/samtools/bcftools/releases/download/1.22/bcftools-1.22.tar.bz2' | tar jxf -
     cd bcftools-1.22
     ./configure
-    sudo make
-    sudo make install
+    make
+    make install
     cd ..
     export PATH="${WORKING_DIR}"/bcftools-1.22:$PATH
 
@@ -83,9 +89,9 @@ rm gatk-4.6.1.0.zip
 
 # Install WhatsHap
     wget 'https://files.pythonhosted.org/packages/37/41/d4540a77832b45c07ce246ad9db6f0650869a22398b0d73adf965abd902a/whatshap-2.8-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl'
-    sudo apt install pipx
+    apt install pipx
     pipx ensurepath
-    sudo PIPX_HOME=/opt/pipx PIPX_BIN_DIR=/usr/local/bin pipx install whatshap-2.8-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl 
+    PIPX_HOME=/opt/pipx PIPX_BIN_DIR=/usr/local/bin pipx install whatshap-2.8-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl 
 
 # Install BEDtools
     wget 'https://github.com/arq5x/bedtools2/releases/download/v2.31.0/bedtools.static'
@@ -108,3 +114,6 @@ rm gatk-4.6.1.0.zip
     java -Xmx${MEMORY}G ${JAVA_OPTIONS} -jar ${GATK_LOCAL_JAR} CreateSequenceDictionary -R ./GRCh38/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna
     bwa-mem2 index ./GRCh38/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna
     samtools faidx ./GRCh38/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna
+
+# Decompress other files
+    gunzip ../scripts/*.gz
