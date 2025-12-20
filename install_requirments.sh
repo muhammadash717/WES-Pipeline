@@ -91,16 +91,11 @@ rm gatk-4.6.1.0.zip
 
 # Install WhatsHap
     wget 'https://files.pythonhosted.org/packages/37/41/d4540a77832b45c07ce246ad9db6f0650869a22398b0d73adf965abd902a/whatshap-2.8-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl'
-    try {
-      apt install pipx
-      export PIPX_HOME=/opt/pipx
-      export PIPX_BIN_DIR=/usr/local/bin
-      export PATH="$PIPX_BIN_DIR:$PATH"
-      pipx install whatshap-2.8-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl 
-    } catch {
-      pip3 install whatshap-2.8-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
-    }
-    
+    apt install pipx
+    export PIPX_HOME=/opt/pipx
+    export PIPX_BIN_DIR=/usr/local/bin
+    export PATH="$PIPX_BIN_DIR:$PATH"
+    pipx install whatshap-2.8-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl 
 
 # Install BEDtools
     wget 'https://github.com/arq5x/bedtools2/releases/download/v2.31.0/bedtools.static'
