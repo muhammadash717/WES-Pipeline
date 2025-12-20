@@ -232,23 +232,6 @@ echo -ne "[`date`]\tStep 10: Annotation & Clinical Filtering... (GeneBe) "
 ) &> ${OUTPUT_DIR}/logs/10_Annotation_ClinicalFiltering.log
 print_elapsed_time "$GENEBE_START"
 
-# EXOMISER_START=$(date +%s)
-# echo -ne "[`date`]\tStep 10: Annotation & Clinical Filtering... (Exomiser) "
-# (
-#     GENDER=$(cat ${OUTPUT_DIR}/qc_metrics/${SAMPLE_NAME}.gender_determination.txt | grep -oP "Gender:\s\K(.*)")
-#     exomiser_generate_yml="/mnt/data/scripts/generate_exomiser_yml/make_exomiser_config.py"
-#     exomiser_run_pipeline="/mnt/data/scripts/Exomiser_Analyzer/run_pipeline.sh"
-#     hpo_dag="/mnt/data/scripts/HPO_DAG_descendants/HPO_DAG_requests.py"
-
-#     python3 ${hpo_dag} ${HPO} ${HPO%.hpo}_descendants.txt --include-original
-
-#     python3 ${exomiser_generate_yml} --id ${SAMPLE_NAME} --gender ${GENDER} --phenotypes ${HPO%.hpo}_descendants.txt --outputFileName ${SAMPLE_NAME}_Output \
-#     --uri ${OUTPUT_DIR}/vcf/${SAMPLE_NAME}.vcf.gz --outputDirectory ${OUTPUT_DIR}/annotation/exomiser --outfile ${OUTPUT_DIR}/annotation/exomiser/${SAMPLE_NAME}.yml
-#     bash ${exomiser_run_pipeline} ${OUTPUT_DIR}/annotation/exomiser/${SAMPLE_NAME}.yml
-#     rm ${HPO%.hpo}_descendants.txt
-# ) &> ${OUTPUT_DIR}/logs/10_Annotation_ClinicalFiltering.log
-# print_elapsed_time "$EXOMISER_START"
-
 CNV_START=$(date +%s)
 echo -ne "[`date`]\tStep 11: CNV Analysis... "
 (
