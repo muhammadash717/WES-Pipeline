@@ -41,6 +41,7 @@ source venv/bin/activate
 
 # Create tools directory and navigate into it
 mkdir -p tools
+chmod 777 tools
 rm -rf tools/* # Clean up any previous installations
 cd tools
 WORKING_DIR=$(pwd)
@@ -110,6 +111,12 @@ rm gatk-4.6.1.0.zip
     mv bedtools.static bedtools
     chmod a+x bedtools
     export PATH="${WORKING_DIR}"/bedtools:$PATH
+
+# Install SavvySuite
+    git clone 'https://github.com/rdemolgen/SavvySuite.git'
+    cd SavvySuite
+    javac *.java
+    cd ..
 
 # Install ClassifyCNV
     git clone 'https://github.com/Genotek/ClassifyCNV.git'

@@ -1,2 +1,6 @@
 venv
 tools
+tools/known_sites
+tools/SavvySuite/Controls
+scripts/gene_hpo_omim.tsv
+scripts/genes_to_all_phenotypes.tsv
