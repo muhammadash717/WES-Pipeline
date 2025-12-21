@@ -1,6 +1,6 @@
+install_requirments.stdout.log
+install_requirments.stderr.log
 venv
 tools
-tools/known_sites
-tools/SavvySuite/Controls
 scripts/gene_hpo_omim.tsv
 scripts/genes_to_all_phenotypes.tsv

@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-exec > /var/log/install_requirments.stdout.log 2> /var/log/install_requirments.stderr.log
+exec > ./install_requirments.stdout.log
 
 # Check for root privileges
 if [[ $EUID -ne 0 ]]; then
@@ -30,7 +30,10 @@ apt-get update && apt-get install -y \
     python3-full \
     perl \
     openjdk-21-jdk \
-    openjdk-21-jre
+    openjdk-21-jre \
+    libhtsjdk-java \
+    libjama-java \
+    libhtsjdk-java-doc
 
 # Set up Python virtual environment
 python3 -m venv venv
@@ -114,8 +117,9 @@ rm gatk-4.6.1.0.zip
 
 # Install SavvySuite
     git clone 'https://github.com/rdemolgen/SavvySuite.git'
+    export CLASSPATH="${WORKING_DIR}"/gatk-4.6.1.0/gatk-package-4.6.1.0-local.jar:"${WORKING_DIR}"/SavvySuite
     cd SavvySuite
-    javac *.java
+    sudo -u "$SUDO_USER" javac *.java
     cd ..
 
 # Install ClassifyCNV
