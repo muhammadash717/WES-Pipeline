@@ -2,6 +2,9 @@
 
 set -euo pipefail
 
+exec > /var/log/install_requirments.stdout.log 2> /var/log/install_requirments.stderr.log
+
+# Check for root privileges
 if [[ $EUID -ne 0 ]]; then
   echo "This script must be run as root"
   exit 1
@@ -29,11 +32,16 @@ apt-get update && apt-get install -y \
     openjdk-21-jdk \
     openjdk-21-jre
 
+# Set up Python virtual environment
+python3 -m venv venv
+source venv/bin/activate
+
 # Install Python packages
     pip3 install -r ./scripts/python-requirements.txt
 
+# Create tools directory and navigate into it
 mkdir -p tools
-rm -rf tools/*
+rm -rf tools/* # Clean up any previous installations
 cd tools
 WORKING_DIR=$(pwd)
 
@@ -91,7 +99,7 @@ rm gatk-4.6.1.0.zip
 
 # Install WhatsHap
     wget 'https://files.pythonhosted.org/packages/37/41/d4540a77832b45c07ce246ad9db6f0650869a22398b0d73adf965abd902a/whatshap-2.8-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl'
-    apt install pipx
+    apt install pipx -y
     export PIPX_HOME=/opt/pipx
     export PIPX_BIN_DIR=/usr/local/bin
     export PATH="$PIPX_BIN_DIR:$PATH"
@@ -122,3 +130,5 @@ rm gatk-4.6.1.0.zip
 
 # Decompress other files
     gunzip ../scripts/*.gz
+
+deactivate
