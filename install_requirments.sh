@@ -19,6 +19,7 @@ apt-get update && apt-get install -y \
     make \
     gcc \
     g++ \
+    apt-utils \
     zlib1g-dev \
     libncurses5-dev \
     libbz2-dev \
@@ -115,12 +116,11 @@ rm gatk-4.6.1.0.zip
     chmod a+x bedtools
     export PATH="${WORKING_DIR}"/bedtools:$PATH
 
-# Install SavvySuite
+# # Install SavvySuite
     git clone 'https://github.com/rdemolgen/SavvySuite.git'
-    export CLASSPATH="${WORKING_DIR}"/gatk-4.6.1.0/gatk-package-4.6.1.0-local.jar:"${WORKING_DIR}"/SavvySuite
-    cd SavvySuite
-    sudo -u "$SUDO_USER" javac *.java
-    cd ..
+    chmod 777 SavvySuite
+    sudo -u "$SUDO_USER" bash -c \
+    "cd ${WORKING_DIR}/SavvySuite; export CLASSPATH=${WORKING_DIR}/gatk-4.6.1.0/gatk-package-4.6.1.0-local.jar:${WORKING_DIR}/SavvySuite; javac ${WORKING_DIR}/SavvySuite/*.java"
 
 # Install ClassifyCNV
     git clone 'https://github.com/Genotek/ClassifyCNV.git'
@@ -143,3 +143,5 @@ rm gatk-4.6.1.0.zip
     gunzip ../scripts/*.gz
 
 deactivate
+
+chmod 777 "${WORKING_DIR}"
