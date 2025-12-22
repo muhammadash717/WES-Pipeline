@@ -93,7 +93,7 @@ rm gatk-4.6.1.0.zip
         grep "^chr${i}\s" "${BED}" | awk '{FS=OFS="\t"} {print $1, $2-100, $3+100}' > twist_exome_bed_files/"${BED%targets*}"_flanking_100bp_chr${i}.bed
         grep "^chr${i}\s" "${BED}" | awk '{FS=OFS="\t"} {print $1, $2-100, $3+100}' >> twist_exome_bed_files/"${BED%targets*}"_flanking_100bp.bed
         grep "^chr${i}\s" "${BED}" | awk '{FS=OFS="\t"} {print $1, $2-20, $3+20}' >> twist_exome_bed_files/"${BED%targets*}"_flanking_20bp.bed
-    done && rm "${BED}"
+    done; rm "${BED}"
 
 # Install FastQC
     wget https://www.bioinformatics.babraham.ac.uk/projects/fastqc/fastqc_v0.12.1.zip
@@ -132,12 +132,12 @@ rm gatk-4.6.1.0.zip
 
 # Download and Index the GRCh38
     mkdir GRCh38
-    curl -L 'ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/001/405/GCA_000001405.15_GRCh38/seqs_for_alignment_pipelines.ucsc_ids/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna.gz' | \
-    zcat > ./GRCh38/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna
+    wget -c -t0 -O './GRCh38/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna.gz' 'ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/001/405/GCA_000001405.15_GRCh38/seqs_for_alignment_pipelines.ucsc_ids/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna.gz'
+    gunzip -f ./GRCh38/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna.gz
     java -jar gatk-4.6.1.0/gatk-package-4.6.1.0-local.jar CreateSequenceDictionary -R \
     ./GRCh38/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna
-    bwa-mem2 index ./GRCh38/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna
-    samtools faidx ./GRCh38/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna
+    "${WORKING_DIR}"/bwa-mem2-2.2.1_x64-linux/bwa-mem2 index ./GRCh38/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna
+    "${WORKING_DIR}"/samtools-1.22.1/samtools faidx ./GRCh38/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna
 
 # Decompress other files
     gunzip ../scripts/*.gz
