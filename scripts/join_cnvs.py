@@ -12,9 +12,9 @@ def get_zygosity(rd):
     elif rd <= 1.75:
         return ["heterozygous", "duplication"]
     elif rd <= 2:
-        return ["heterozygous", "duplication"]
+        return ["homozygous", "duplication"]
     else:
-        return ["high_copy_gain", "duplication"]
+        return ["high_copy_gain", "high_copy_gain"]
 
 # ---- CONFIG ----
 annotated_cnvs_file = sys.argv[1]

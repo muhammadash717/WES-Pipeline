@@ -18,9 +18,11 @@ sample_file=$(basename "${file}")
 sample=${sample_file%%.*}
 
 # === Tool paths ===
-GATK_LOCAL_JAR="/mnt/data/WES_Pipeline/tools/gatk-4.6.1.0/gatk-package-4.6.1.0-local.jar"
-SavvySuite="/mnt/data/WES_Pipeline/tools/SavvySuite"
-ClassifyCNV="/mnt/data/WES_Pipeline/tools/ClassifyCNV"
+SCRIPTS="$(dirname "$(readlink -f "$0")")"
+PIPELINE_DIR="$(dirname $SCRIPTS)"
+GATK_LOCAL_JAR="${PIPELINE_DIR}/tools/gatk-4.6.1.0/gatk-package-4.6.1.0-local.jar"
+SavvySuite="${PIPELINE_DIR}/tools/SavvySuite"
+ClassifyCNV="${PIPELINE_DIR}/tools/ClassifyCNV"
 cytobands_file="${SavvySuite}/cytobands/cytoBand.txt"
 controls_dir="${SavvySuite}/Controls/${gender}"
 
@@ -86,7 +88,7 @@ run_cnv_analysis() {
         "${bin_outdir}/${sample}.${d_size}.CNVs.annotated.tsv" > "${bin_outdir}/${sample}.${d_size}.CNVs.annotated.filtered.tsv"
 
     # Step 6: Join annotated CNVs with filtered CNVs
-    python3 /mnt/data/WES_Pipeline/scripts/join_cnvs.py \
+    python3 ${PIPELINE_DIR}/scripts/join_cnvs.py \
         "${bin_outdir}/${sample}.${d_size}.CNVs.annotated.filtered.tsv" \
         "${bin_outdir}/${sample}.${d_size}.CNVs.filtered.tsv" \
         "${bin_outdir}/${sample}.${d_size}.CNVs.tsv"
@@ -116,7 +118,7 @@ for d_size in "${bin_sizes[@]}"; do
     tail -n +2 ${outdir}/bin_${d_size}/${sample}.${d_size}.CNVs.tsv >> ${outdir}/${sample}_CNVs.tsv
 done
 
-python3 /mnt/data/WES_Pipeline/scripts/html_render.py ${outdir}/${sample}_CNVs.tsv /mnt/data/WES_Pipeline/scripts/cnv_template.html
+python3 ${PIPELINE_DIR}/scripts/html_render.py ${outdir}/${sample}_CNVs.tsv ${PIPELINE_DIR}/scripts/cnv_template.html
 
 
 echo "=========================================="

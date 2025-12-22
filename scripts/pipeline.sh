@@ -10,12 +10,11 @@ R2="${R1//_R1_/_R2_}"
 SAMPLE_NAME="$(basename "${R1}" | cut -d'_' -f1)"
 
 # Directories
-PIPELINE_DIR="/mnt/data/WES_Pipeline"
+SCRIPTS="$(dirname "$(readlink -f "$0")")"
+PIPELINE_DIR="$(dirname $SCRIPTS)"
 RESULTS_DIR="${PIPELINE_DIR}/results"
 OUTPUT_DIR="${RESULTS_DIR}/${SAMPLE_NAME}"
 TMP_DIR="${OUTPUT_DIR}/tmp"
-
-SCRIPTS="${PIPELINE_DIR}/scripts"
 
 # Output folders
 mkdir -p ${OUTPUT_DIR}/{bam,vcf,annotation,logs,qc_metrics,cnv}
@@ -25,27 +24,23 @@ mkdir -p ${TMP_DIR}
 exec > >(tee ${OUTPUT_DIR}/${SAMPLE_NAME}.stdout.log)
 exec 2> >(tee ${OUTPUT_DIR}/${SAMPLE_NAME}.stderr.log >&2)
 
-REF="/mnt/data/WES_Pipeline/GRCh38/BWA/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna"
+REF="${PIPELINE_DIR}/GRCh38/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna"
 
 JAVA_OPTIONS="-Dsamjdk.use_async_io_read_samtools=true -Dsamjdk.use_async_io_write_samtools=true -Dsamjdk.use_async_io_write_tribble=false -Dsamjdk.compression_level=2"
-GATK_LOCAL_JAR="/mnt/data/WES_Pipeline/tools/gatk-4.6.1.0/gatk-package-4.6.1.0-local.jar"
+GATK_LOCAL_JAR="${PIPELINE_DIR}/tools/gatk-4.6.1.0/gatk-package-4.6.1.0-local.jar"
 
-SAMTOOLS="/mnt/data/WES_Pipeline/tools/samtools-1.22.1/bin/samtools"
-BCFTOOLS="/mnt/data/WES_Pipeline/tools/bcftools-1.22/bin/bcftools"
-TABIX="/mnt/data/WES_Pipeline/tools/htslib-1.22.1/bin/tabix"
-FASTQC="/mnt/data/WES_Pipeline/tools/FastQC/fastqc"
-BWA_MEM2="/mnt/data/WES_Pipeline/tools/bwa-mem2-2.2.1_x64-linux/bwa-mem2"
+SAMTOOLS="${PIPELINE_DIR}/tools/samtools-1.22.1/samtools"
+BCFTOOLS="${PIPELINE_DIR}/tools/bcftools-1.22/bcftools"
+TABIX="${PIPELINE_DIR}/tools/htslib-1.22.1/tabix"
+FASTQC="${PIPELINE_DIR}/tools/FastQC/fastqc"
+BWA_MEM2="${PIPELINE_DIR}/tools/bwa-mem2-2.2.1_x64-linux/bwa-mem2"
 
-INTERVALS_BED="/mnt/data/WES_Pipeline/Kits_BED_files/Twist_Exome_2.0/hg38_exome_v2.0.2_with_flanking_100bp.bed"  # For CNVs (not used)
-INTERVALS="/mnt/data/WES_Pipeline/Kits_BED_files/Twist_Exome_2.0/hg38_exome_v2.0.2_with_flanking_100bp"          # Splitted by chromosome (*_chr10.bed)
-INTERVALS_20bp="/mnt/data/WES_Pipeline/Kits_BED_files/Twist_Exome_2.0/hg38_exome_v2.0.2_with_flanking_20bp.bed"  # For the SNVs
+INTERVALS_BED="${PIPELINE_DIR}/tools/twist_exome_bed_files/hg38_exome_v2.0.2_flanking_100bp.bed"  # For CNVs (not used)
+INTERVALS="${PIPELINE_DIR}/tools/twist_exome_bed_files/hg38_exome_v2.0.2_flanking_100bp"          # Splitted by chromosome (*_chr10.bed)
+INTERVALS_20bp="${PIPELINE_DIR}/tools/twist_exome_bed_files/hg38_exome_v2.0.2_flanking_20bp.bed"  # For the SNVs
 
-# INTERVALS_BED="/mnt/data/WES_Pipeline/Kits_BED_files/BGI_Exome_V5/BGI_Exome_V5_kit_flanking_100bp.bed" # For CNVs (not used)
-# INTERVALS="/mnt/data/WES_Pipeline/Kits_BED_files/BGI_Exome_V5/BGI_Exome_V5_kit_flanking_100bp"         # Splitted by chromosome (*_chr10.bed)
-# INTERVALS_20bp="/mnt/data/WES_Pipeline/Kits_BED_files/BGI_Exome_V5/BGI_Exome_V5_kit_flanking_20bp.bed" # For the SNVs
-
-KNOWN_SITES_1="/mnt/data/WES_Pipeline/known_sites/Homo_sapiens_assembly38.known_sites"
-KNOWN_SITES_2="/mnt/data/WES_Pipeline/known_sites/Homo_sapiens_assembly38.known_indels"
+KNOWN_SITES_1="${PIPELINE_DIR}/tools/known_sites/Homo_sapiens_assembly38.known_sites"
+KNOWN_SITES_2="${PIPELINE_DIR}/tools/known_sites/Homo_sapiens_assembly38.known_indels"
 
 CHROMOSOMES=(1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 X Y M)
 CHRS=$((${#CHROMOSOMES[@]} - 2)) # exclude small chromosomes (M and Y)
@@ -70,7 +65,7 @@ print_elapsed_time() {
     printf "\t(%01d hrs %01d mins %01d secs)\n" "$hours" "$minutes" "$seconds"
 }
 
-python3 ${SCRIPTS}/GenXomeFancy.py ${SAMPLE_NAME}
+python3 ${SCRIPTS}/WES_fancy.py ${SAMPLE_NAME}
 
 echo "***** Results Directory: ${OUTPUT_DIR} *****"
 

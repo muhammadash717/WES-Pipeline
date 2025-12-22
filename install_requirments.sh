@@ -86,13 +86,13 @@ rm gatk-4.6.1.0.zip
     mkdir -p twist_exome_bed_files
     wget 'https://www.twistbioscience.com/sites/default/files/resources/2022-12/hg38_exome_v2.0.2_targets_sorted_validated.re_annotated.bed'
     BED="hg38_exome_v2.0.2_targets_sorted_validated.re_annotated.bed"
-    rm -f twist_exome_bed_files/"${BED%targets*}"_flanking_100bp.bed twist_exome_bed_files/"${BED%targets*}"_flanking_20bp.bed
+    rm -f twist_exome_bed_files/"${BED%_targets*}"_flanking_100bp.bed twist_exome_bed_files/"${BED%_targets*}"_flanking_20bp.bed
     
     CHROMOSOMES=(1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 X Y M)
     for i in "${CHROMOSOMES[@]}"; do
-        grep "^chr${i}\s" "${BED}" | awk '{FS=OFS="\t"} {print $1, $2-100, $3+100}' > twist_exome_bed_files/"${BED%targets*}"_flanking_100bp_chr${i}.bed
-        grep "^chr${i}\s" "${BED}" | awk '{FS=OFS="\t"} {print $1, $2-100, $3+100}' >> twist_exome_bed_files/"${BED%targets*}"_flanking_100bp.bed
-        grep "^chr${i}\s" "${BED}" | awk '{FS=OFS="\t"} {print $1, $2-20, $3+20}' >> twist_exome_bed_files/"${BED%targets*}"_flanking_20bp.bed
+        grep "^chr${i}\s" "${BED}" | awk '{FS=OFS="\t"} {print $1, $2-100, $3+100}' > twist_exome_bed_files/"${BED%_targets*}"_flanking_100bp_chr${i}.bed
+        grep "^chr${i}\s" "${BED}" | awk '{FS=OFS="\t"} {print $1, $2-100, $3+100}' >> twist_exome_bed_files/"${BED%_targets*}"_flanking_100bp.bed
+        grep "^chr${i}\s" "${BED}" | awk '{FS=OFS="\t"} {print $1, $2-20, $3+20}' >> twist_exome_bed_files/"${BED%_targets*}"_flanking_20bp.bed
     done; rm "${BED}"
 
 # Install FastQC
@@ -119,6 +119,9 @@ rm gatk-4.6.1.0.zip
 # # Install SavvySuite
     git clone 'https://github.com/rdemolgen/SavvySuite.git'
     chmod 777 SavvySuite
+    mkdir -p SavvySuite/cytobands
+    wget -O 'SavvySuite/cytobands/cytoBand.txt.gz' 'https://hgdownload.cse.ucsc.edu/goldenPath/hg38/database/cytoBand.txt.gz'
+    gunzip SavvySuite/cytobands/cytoBand.txt.gz
     sudo -u "$SUDO_USER" bash -c \
     "cd ${WORKING_DIR}/SavvySuite; export CLASSPATH=${WORKING_DIR}/gatk-4.6.1.0/gatk-package-4.6.1.0-local.jar:${WORKING_DIR}/SavvySuite; javac ${WORKING_DIR}/SavvySuite/*.java"
 

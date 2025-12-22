@@ -6,7 +6,10 @@ import os
 import math
 
 # ---- USER INPUTS ----
-SAMTOOLS = "/mnt/data/WES_Pipeline/tools/samtools-1.22.1/bin/samtools"
+SCRIPTS = os.path.dirname(os.path.realpath(__file__))
+PIPELINE_DIR = os.path.dirname(SCRIPTS)
+
+SAMTOOLS = f"{PIPELINE_DIR}/tools/samtools-1.22.1/samtools"
 
 if len(sys.argv) != 3:
     print(f"Usage: {sys.argv[0]} <input.bam> <output.txt>")
