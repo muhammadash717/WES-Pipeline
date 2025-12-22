@@ -1,8 +1,6 @@
 # WES-Pipeline
 Open-source Whole Exome Sequencing (WES) analysis pipeline built with Bash and Python.
 
----
-
 # Introduction
 
 WES Pipeline is an end-to-end, fully automated Whole Exome Sequencing (WES) analysis pipeline. It processes raw reads (FASTQ) through alignment, variant calling, annotation, clinical filtering and produces human-readable reports (HTML + VCF + tabular outputs) suitable for downstream review and clinical interpretation.
@@ -12,16 +10,15 @@ This README documents the pipeline, the steps performed, expected inputs/outputs
 # Goals & Scope
 
 * Provide a reproducible, auditable WES analysis pipeline optimized for clinical research and in‑house diagnostics.
-* Support GRCh38 as the primary reference.
-* Produce annotated variants prioritized for clinical interpretation (ACMG framework compatible templates included).
-* Scale to HPC and cloud environments with CPU/memory-aware parallelization and chromosome-level scatter/gather.
+* Support GRCh38 as the reference genome.
+* Produce annotated variants prioritized based on given HPO terms for clinical interpretation.
+* Scale to HPC and cloud environments with CPU/memory-aware and chromosome-level parallelization.
 
 # Features
 
-* End-to-end automation from FASTQ to annotated, filtered variants and HTML report
-* Support for SNV/indel calling, CNV detection from exome read depth, and phasing
-* Built-in QC at multiple stages (FastQC, alignment metrics, coverage)
-* Configurable clinical filters and annotation sources
+* End-to-end automation from FASTQ to annotated, filtered variants and HTML report.
+* Support for SNV/indel calling and phasing, and CNV detection from exome read depth.
+* Built-in QC at multiple stages (FastQC, alignment metrics, coverage).
 
 # Quick Example Run
 
@@ -34,14 +31,14 @@ bash ./scripts/pipeline.sh sample_R1.fastq.gz
 
 # Requirements
 
-## Software (installed by `install_requirments.sh` script)
+## Software
 
-* Linux (Ubuntu/CentOS/RHEL)
-* Java 21
+* Linux (tested on Ubuntu 24.04.3 LTS)
+* Java 21 (openjdk 21.0.9)
 * Python 3.10+
 * **Aligner:** `bwa-mem2`
 * **BAM manipulation tools:** `samtools`
-* **Duplicate marking & BQSR & variant calling:** `GATK`
+* **Duplicate Marking & BQSR & Variant Calling:** `GATK`
 * **Phasing:** `whatshap`
 * **Annotation:** `GeneBe API`
 * **CNV:** `SavvySuite`
@@ -58,9 +55,9 @@ bash ./scripts/pipeline.sh sample_R1.fastq.gz
 Clone the repo & Run `install_requirments.sh` script:
 
 ```bash
-git clone https://github.com/muhammadash717/WES-Pipeline.git
+git clone 'https://github.com/muhammadash717/WES-Pipeline.git'
 cd WES-Pipeline
-bash install_requirments.sh
+sudo bash install_requirments.sh
 ```
 
 # Inputs & Outputs
@@ -68,9 +65,10 @@ bash install_requirments.sh
 ## Expected inputs
 
 * Paired-end FASTQ files (gzipped)
-* Reference genome (FASTA + indices) - should be already prepared if you run `install_requirments.sh` script.
-* Known-sites VCFs (for BQSR)
 * Sample phenotype (*.hpo file in the HPO directory) - preferred to be from [this HPO-Portal](https://github.com/muhammadash717/HPO-Portal)  
+* Indexed Reference Genome - should be ready if `install_requirments.sh` run correctly.
+* Known-sites VCFs (for BQSR) - [Source 1](https://console.cloud.google.com/storage/browser/genomics-public-data/resources/broad/hg38/v0) and [Source 2](https://gatk.broadinstitute.org/hc/en-us/community/posts/360075305092/comments/360014557672)
+* BED target regions of the used Exome Kit - used [Twist Exome 2.0 hg38 covered targets](https://www.twistbioscience.com/resources/data-files/twist-exome-20-bed-files)
 
 ## Output directory layout
 
@@ -130,138 +128,91 @@ results
         └── SampleA01.vcf.gz.tbi
 ```
 
-# Pipeline Steps (detailed)
+# Pipeline Steps
 
-## 1. Alignment
+## 1. Alignment `bwa-mem2`
 
 **Purpose:** Map FASTQ reads to reference (GRCh38) to produce coordinate-sorted BAM.
 
-**Typical tools:** `bwa-mem2`
+**Outputs:** unsorted BAM, alignment metrics
 
-**Example (placeholder):**
+**QC checks:** mapping rate, percent properly paired
 
-```bash
-bwa-mem2 mem -t ${threads} ${bwa_index} sample_R1.fastq.gz sample_R2.fastq.gz | samtools view -b -o sample.unsorted.bam -
-```
-
-**Outputs:** unsorted BAM, alignment metrics (e.g., from samtools flagstat)
-
-**QC checks:** mapping rate, percent properly paired, insert size distribution
-
-## 2. BAM Sorting
+## 2. BAM Sorting `samtools sort`
 
 **Purpose:** Sort BAM by genomic coordinates for downstream tools.
-
-**Tools:** `samtools sort`, `picard SortSam`
-
-**Example:**
-
-```bash
-samtools sort -@ ${threads} -o sample.sorted.bam sample.unsorted.bam
-```
-
-**QC:** verify sorting, BAM index creation
 
 ## 3. Marking Duplicates
 
 **Purpose:** Identify PCR / optical duplicates to avoid depth inflation.
 
-**Tools:** `picard MarkDuplicates`, `samblaster`
+**Tools:** `GATK MarkDuplicatesSpark`
 
-**Outputs:** `sample.markdup.bam` + metrics file
+**Outputs:** BAM + metrics file
 
-**QC:** percent duplicates; flag if > X% (configurable)
+**QC:** percent duplicates
 
-## 4. Base Quality Score Recalibration (BQSR)
+## 4. Base Quality Score Recalibration (`GATK BaseRecalibrator` + `ApplyBQSR`)
 
 **Purpose:** Model and correct systematic errors in base quality scores.
 
-**Tools:** `GATK BaseRecalibrator` + `ApplyBQSR`
-
 **Inputs:** BAM, known-sites VCFs
 
-**Outputs:** `sample.recal.bam` and recalibration reports
+**Outputs:** BAM and recalibration reports
 
 **QC:** pre/post BQSR quality score distributions
 
-## 5. Variant Calling
+## 5. Variant Calling `GATK HaplotypeCaller`
 
 **Purpose:** Call SNVs and small indels relative to reference.
 
-**Tools:** `GATK HaplotypeCaller` (GVCF mode), `DeepVariant`, `Strelka2`, `FreeBayes` (alternatives)
+**Outputs:** raw VCF
 
-**Example:**
+**QC:** Totals Variants Count (SNVs/INDELs), Ti/Tv and Het/Hom ratios
 
-```bash
-gatk HaplotypeCaller -R GRCh38.fa -I sample.recal.bam -O sample.g.vcf.gz -ERC GVCF
-```
+## 6. VCF Filtering `bcftools`
 
-**Outputs:** per-sample GVCF / raw VCF
+**Purpose:** Remove low-confidence calls using GATK hard filters. [here](https://gatk.broadinstitute.org/hc/en-us/articles/360035531112--How-to-Filter-variants-either-with-VQSR-or-by-hard-filtering)
 
-**QC:** genotype quality (GQ), depth (DP) distributions
-
-## 6. VCF Filtering
-
-**Purpose:** Remove low-confidence calls using hard filters or VQSR.
-
-**Tools:** `GATK VariantFiltration` or `VariantRecalibrator` + `ApplyVQSR`.
-
-**Thresholds:** Provide defaults in `config.yml` but encourage tuning for kit/platform.
-
-## 7. Phasing
+## 7. Phasing `whatshap`
 
 **Purpose:** Determine whether variants are in cis or trans (helps interpret compound het).
-
-**Tools:** `whatshap`, `shapeit` (requires pedigree/strand info)
 
 **Outputs:** phased VCFs
 
 ## 8. Gender Determination
 
-**Purpose:** Infer genetic sex from chromosome coverage and heterozygosity on X.
+**Purpose:** Infer genetic sex from relative chromosomes coverages.
 
-**Tools:** custom script (coverage-based) or `verifyBamID` / `sexcheck` utilities
+**Tools:** custom script (coverage-based).
 
-**Use:** Verify sample identity and detect sex chromosome aneuploidies.
+**Use:** Verify sample identity, CNV detection and detect sex chromosome aneuploidies.
 
 ## 9. Annotation
 
 **Purpose:** Add gene context, predicted consequence, population frequencies and clinical assertions.
 
-**Tools:** `VEP`, `ANNOVAR`, `SnpEff`, `bcftools csq`.
+**Tools:** `GeneBe API` and custom scripts.
 
-**Databases to include:** dbSNP, ClinVar, gnomAD, ExAC, CADD, SpliceAI, OMIM (if licensed).
-
-**Outputs:** annotated VCF, TSV / Excel extract for review
+**Outputs:** annotated TSV.
 
 ## 10. Clinical Filtering
 
-**Purpose:** Prioritize variants relevant to phenotype by allele frequency, predicted consequence, ClinVar status and inheritance model.
+**Purpose:** Prioritize variants relevant to phenotype by population frequency, predicted consequence, ClinVar status and others.
 
-**Template filters:**
+**Outputs:** filtered TSV and HTML extract for easier inspection.
 
-* AF < `clinical_filters.allele_frequency_threshold` (e.g., 0.01)
-* Consequence in high/moderate ranks
-* ClinVar pathogenic/likely_pathogenic flagged
-* Loss-of-function or predicted deleterious missense
+## 11. CNV Analysis `SavvySuite`
 
-**Outputs:** `sample.clinical_candidates.tsv` and final HTML report.
-
-## 11. CNV Analysis
-
-**Purpose:** Detect exonic/segmental copy-number changes from read depth.
-
-**Tools:** `CNVkit`, `ExomeDepth`, `gCNV` (GATK)
+**Purpose:** Detect copy-number changes from read depth.
 
 **Inputs:** BAM files + panel of normals / reference samples
 
-**Outputs:** CNV calls (BED/CNS/CNR), QC plots
+**Outputs:** CNV calls.
 
 ## 12. Quality Control
 
 **Purpose:** Aggregate QC info across the run to ensure data integrity.
-
-**Tools:** `FastQC`, `MultiQC`, coverage calculators (e.g., `mosdepth`), `qualimap`.
 
 **Key metrics to report:**
 
@@ -274,55 +225,8 @@ gatk HaplotypeCaller -R GRCh38.fa -I sample.recal.bam -O sample.g.vcf.gz -ERC GV
 
 **Purpose:** Remove or compress intermediate files to save storage while retaining essential outputs and provenance.
 
-**Strategy:** Keep final BAM, final VCFs, report, and QC artifacts; remove temporary large intermediates unless `--keep-intermediates` set.
+# Performance & Logging
 
-# Quality Control & Metrics
-
-Provide a separate `docs/qc.md` (template included) that lists metric definitions, thresholds, and interpretation guidance. Example thresholds (tune per lab):
-
-* Mean target coverage: >= 80x
-* % targets >= 20x: >= 95%
-* % duplicates: < 15% (platform dependent)
-* Mapping rate: > 95%
-
-# Clinical Filtering & Reporting
-
-* Template for clinical review table (columns: gene, transcript, variant, zygosity, AF, ClinVar, predicted consequence, ACMG criteria, evidence links, reviewer notes)
-* HTML report generator placeholder (e.g., `report.html`) producing high-level summary and candidate variant table with links to external databases.
-
-# Annotation & Databases
-
-List of recommended databases and how-to update them regularly. Add scripts (template) to download and prepare caches for VEP/ANNOVAR/gnomAD.
-
-# CNV Analysis
-
-Documented recommended approach for exome CNV calling using a matched panel-of-normals or cohort; include QC metrics and recommended filters for likely pathogenic CNVs.
-
-# Performance & Optimization
-
-* **Parallelization:** scatter by chromosome and run independent steps in parallel.
-* **Resource tuning:** set tools' `--threads` and memory flags; adjust Java `-Xmx` for GATK steps.
-* **I/O optimization:** use local scratch on compute node, then rsync results to shared storage.
-* **Intermediate cleanup:** enable optional cleanup to reduce disk usage.
-
-# Logging, Provenance & Reproducibility
-
-* Save exact command lines and tool versions in a `run-manifest.json` for each run.
-* Log files per step and a master run log.
-* Reproducible environments: Docker images, Singularity containers, or Conda env files.
-
-# Testing & Validation
-
-Include a `tests/` directory with small example FASTQ (or links) and expected outputs. Describe validation procedures: sensitivity, precision benchmarking against truth sets (GIAB) and orthogonal confirmations.
-
-# Troubleshooting
-
-Common issues and quick fixes (placeholders):
-
-* Low coverage on targets — check capture kit BED, library prep notes, mapping parameters
-* High duplicate rate — check library prep and PCR cycle counts
-* High number of false positives — examine base recalibration inputs and variant filtration thresholds
-
+* Independent steps (4-7) run in parallel by chromosome.
+* Log files per step and a master run log are produced.
 ---
-
-*End of README template — fill in lab-specific values and add any missing workflow-engine specific instructions (Nextflow, Snakemake, or custom scripts).*
