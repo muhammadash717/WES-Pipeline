@@ -37,6 +37,8 @@ apt-get update && apt-get install -y \
     libjama-java \
     libhtsjdk-java-doc
 
+# sudo apt install python3-gffutils python3-jinja2 python3-matplotlib python3-pandas python3-pyfiglet python3-requests python3-rich python3-pyfiglet
+
 # Set up Python virtual environment
 python3 -m venv venv
 source venv/bin/activate

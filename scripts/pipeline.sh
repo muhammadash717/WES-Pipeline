@@ -21,10 +21,12 @@ mkdir -p ${OUTPUT_DIR}/{bam,vcf,annotation,logs,qc_metrics,cnv}
 mkdir -p ${OUTPUT_DIR}/annotation/exomiser
 mkdir -p ${TMP_DIR}
 
+source "${PIPELINE_DIR}"/venv/bin/activate
+
 exec > >(tee ${OUTPUT_DIR}/${SAMPLE_NAME}.stdout.log)
 exec 2> >(tee ${OUTPUT_DIR}/${SAMPLE_NAME}.stderr.log >&2)
 
-REF="${PIPELINE_DIR}/GRCh38/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna"
+REF="${PIPELINE_DIR}/tools/GRCh38/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna"
 
 JAVA_OPTIONS="-Dsamjdk.use_async_io_read_samtools=true -Dsamjdk.use_async_io_write_samtools=true -Dsamjdk.use_async_io_write_tribble=false -Dsamjdk.compression_level=2"
 GATK_LOCAL_JAR="${PIPELINE_DIR}/tools/gatk-4.6.1.0/gatk-package-4.6.1.0-local.jar"
@@ -81,16 +83,16 @@ echo -n "***** Utilizing ${THREADS}/${TOTAL_THREADS} CPUs (${THREADS_PER_CHR}/ch
 echo " and ${MEMORY}/${TOTAL_MEMORY} GB RAM (${MEMORY_PER_CHR}GB/chr and ${MEMORY_PER_THREAD}GB/thread) *****"
 echo
 
-(
-    ${FASTQC} ${R1} --outdir=${OUTPUT_DIR}/qc_metrics
-    ${FASTQC} ${R2} --outdir=${OUTPUT_DIR}/qc_metrics
-) &> ${OUTPUT_DIR}/logs/00_FastQC.log &
+# (
+#     ${FASTQC} ${R1} --outdir=${OUTPUT_DIR}/qc_metrics
+#     ${FASTQC} ${R2} --outdir=${OUTPUT_DIR}/qc_metrics
+# ) &> ${OUTPUT_DIR}/logs/00_FastQC.log &
 
 ALIGNMENT_START=$(date +%s)
 echo -ne "[`date`]\tStep 1: Alignment and BAM sorting... "
 (
-${BWA_MEM2} mem -t 32 -R "@RG\tID:${SAMPLE_NAME}\tSM:${SAMPLE_NAME}\tPL:MGI" ${REF} ${R1} ${R2} | \
-${SAMTOOLS} sort -@ 12 -m 8G -l 1 --write-index -O BAM -T ${TMP_DIR} -o "${OUTPUT_DIR}/bam/${SAMPLE_NAME}.sorted.bam" -
+${BWA_MEM2} mem -t 8 -R "@RG\tID:${SAMPLE_NAME}\tSM:${SAMPLE_NAME}\tPL:MGI" ${REF} ${R1} ${R2} | \
+${SAMTOOLS} sort -@ 4 -m 2G -l 1 --write-index -O BAM -T ${TMP_DIR} -o "${OUTPUT_DIR}/bam/${SAMPLE_NAME}.sorted.bam" -
 ) &> ${OUTPUT_DIR}/logs/01_Alignment_BAMSorting.log
 print_elapsed_time "$ALIGNMENT_START"
 
@@ -103,13 +105,13 @@ java -Xmx${MEMORY}G ${JAVA_OPTIONS} -jar ${GATK_LOCAL_JAR} MarkDuplicatesSpark \
   --tmp-dir ${TMP_DIR} \
   --metrics-file ${OUTPUT_DIR}/qc_metrics/${SAMPLE_NAME}.dedup.metrics.txt \
   --conf spark.local.dir="$TMP_DIR" \
-  --spark-master local[12] \
+  --spark-master local[5] \
   --read-validation-stringency LENIENT \
   --create-output-bam-index true \
   --create-output-bam-splitting-index false \
-  --conf spark.executor.cores=12 \
-  --conf spark.executor.memory=48g \
-  --conf spark.driver.memory=16g \
+  --conf spark.executor.cores=5 \
+  --conf spark.executor.memory=20g \
+  --conf spark.driver.memory=10g \
   --conf spark.serializer=org.apache.spark.serializer.KryoSerializer \
   --conf spark.kryoserializer.buffer=64m \
   --conf spark.kryoserializer.buffer.max=1024m \
@@ -185,7 +187,7 @@ whatshap phase --output ${OUTPUT_DIR}/vcf/${SAMPLE_NAME}.phased.chr${i}.vcf.gz \
     --reference ${REF} --chromosome chr${i} \
     ${OUTPUT_DIR}/vcf/${SAMPLE_NAME}.hard-filtered.chr${i}.vcf.gz \
     ${OUTPUT_DIR}/bam/${SAMPLE_NAME}.exonic.chr${i}.bam &> ${OUTPUT_DIR}/logs/07_Phasing_chr${i}.log
-) &
+)
 done
 wait
 )
@@ -273,3 +275,4 @@ grep -iP "error|warn|fail|exception|critical|fatal|trace|stack" ${OUTPUT_DIR}/lo
 echo -ne "[`date`]\tPipeline complete. GoodBye! "
 print_elapsed_time "$START"
 
+deactivate

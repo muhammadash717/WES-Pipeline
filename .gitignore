@@ -4,3 +4,7 @@ venv
 tools
 scripts/gene_hpo_omim.tsv
 scripts/genes_to_all_phenotypes.tsv
+results
+HPO
+chr1_R1.fastq.gz
+chr1_R2.fastq.gz
