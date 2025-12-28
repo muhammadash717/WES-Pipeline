@@ -1,0 +1,7 @@
+gffutils==0.13
+Jinja2==3.1.6
+matplotlib==3.10.8
+pandas==2.3.3
+pyfiglet==1.0.4
+Requests==2.32.5
+rich==14.2.0
