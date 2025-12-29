@@ -37,7 +37,8 @@ apt-get update && apt-get install -y \
     libhtsjdk-java \
     libjama-java \
     libhtsjdk-java-doc \
-    gnuplot
+    gnuplot \
+    bedtools
 
 # Set up Python virtual environment and Install Python packages
     python3 -m venv venv
@@ -64,7 +65,6 @@ WORKING_DIR=$(pwd)
     make
     make install
     cd ..
-    echo "export PATH=${WORKING_DIR}/htslib-1.22.1:$PATH" >> /home/$SUDO_USER/.bashrc
 
 # Install SAMtools
     curl -L 'https://github.com/samtools/samtools/releases/download/1.22.1/samtools-1.22.1.tar.bz2' | tar jxf -
@@ -73,7 +73,6 @@ WORKING_DIR=$(pwd)
     make
     make install
     cd ..
-    echo "export PATH=${WORKING_DIR}/samtools-1.22.1:$PATH" >> /home/$SUDO_USER/.bashrc
 
 # Install BCFtools
     curl -L 'https://github.com/samtools/bcftools/releases/download/1.22/bcftools-1.22.tar.bz2' | tar jxf -
@@ -82,13 +81,11 @@ WORKING_DIR=$(pwd)
     make
     make install
     cd ..
-    echo "export PATH=${WORKING_DIR}/bcftools-1.22:$PATH" >> /home/$SUDO_USER/.bashrc
 
 # Install FastQC
     wget https://www.bioinformatics.babraham.ac.uk/projects/fastqc/fastqc_v0.12.1.zip
     unzip fastqc_v0.12.1.zip
     rm fastqc_v0.12.1.zip
-    echo "export PATH=${WORKING_DIR}/FastQC:$PATH" >> /home/$SUDO_USER/.bashrc
 
 # Install WhatsHap
     wget 'https://files.pythonhosted.org/packages/37/41/d4540a77832b45c07ce246ad9db6f0650869a22398b0d73adf965abd902a/whatshap-2.8-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl'
@@ -100,7 +97,6 @@ WORKING_DIR=$(pwd)
 # Install BEDtools
     mkdir -p bedtools
     wget -O 'bedtools/bedtools' 'https://github.com/arq5x/bedtools2/releases/download/v2.31.0/bedtools.static'
-    echo "export PATH=${WORKING_DIR}/bedtools:$PATH" >> /home/$SUDO_USER/.bashrc
 
 # Install SavvySuite
     git clone 'https://github.com/rdemolgen/SavvySuite.git'
@@ -116,7 +112,6 @@ WORKING_DIR=$(pwd)
 
 # Install bwa-mem2
     curl -L 'https://github.com/bwa-mem2/bwa-mem2/releases/download/v2.2.1/bwa-mem2-2.2.1_x64-linux.tar.bz2' | tar jxf -
-    echo "export PATH=${WORKING_DIR}/bwa-mem2-2.2.1_x64-linux:$PATH" >> /home/$SUDO_USER/.bashrc
 
 source /home/$SUDO_USER/.bashrc
 
@@ -126,15 +121,15 @@ cd ${WORKING_DIR}/..
 bash ./scripts/download_reference.sh \
     "ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/001/405/GCA_000001405.15_GRCh38/seqs_for_alignment_pipelines.ucsc_ids/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna.gz" \
     "${WORKING_DIR}/GRCh38" \
-    "${WORKING_DIR}/gatk-4.6.1.0/gatk-package-4.6.1.0-local.jar" && echo "Reference genome downloaded and indexed." || echo "Failed to download or index reference genome."
-
+    "${WORKING_DIR}/gatk-4.6.1.0/gatk-package-4.6.1.0-local.jar"
+    
 # Decompress other files
 gunzip -kf ./scripts/*.gz && echo "HPO files extracted." || echo "Failed to extract HPO files."
 
 # Preparing BED files with flanking regions
 bash ./scripts/download_bed_file.sh \
     "https://www.twistbioscience.com/sites/default/files/resources/2022-12/hg38_exome_v2.0.2_targets_sorted_validated.re_annotated.bed" \
-    "${WORKING_DIR}/twist_exome_bed_files" && echo "BED files prepared." || echo "Failed to prepare BED files."
-
+    "${WORKING_DIR}/twist_exome_bed_files"
+    
 chown -R $SUDO_USER:$SUDO_USER "${WORKING_DIR}"
 echo "=== Installation completed successfully! ==="

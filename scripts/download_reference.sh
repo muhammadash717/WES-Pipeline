@@ -17,5 +17,5 @@ wget -c -t0 ${genome_link}
 gunzip -f ${filename}
 
 java -jar ${gatk_dir} CreateSequenceDictionary -R ${filename%.gz}
-../bins/bwa-mem2 index ${filename%.gz}
-../bins/samtools faidx ${filename%.gz}
+../bwa-mem2-2.2.1_x64-linux/bwa-mem2 index ${filename%.gz}
+../samtools-1.22.1/samtools faidx ${filename%.gz}
