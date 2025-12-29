@@ -3,3 +3,5 @@ install_requirements.stdout.log
 results
 tools
 venv
+scripts/gene_hpo_omim.tsv
+scripts/genes_to_all_phenotypes.tsv
