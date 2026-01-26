@@ -20,10 +20,12 @@ import sys
 import gzip
 import os
 
-SAMTOOLS = "/mnt/data/WES_Pipeline/tools/samtools-1.22.1/bin/samtools"
-BCFTOOLS = "/mnt/data/WES_Pipeline/tools/bcftools-1.22/bin/bcftools"
-MOSDEPTH = "/mnt/data/WES_Pipeline/tools/mosdepth_v0.3.11/mosdepth"
+SCRIPTS = os.path.dirname(os.path.realpath(__file__))
+PIPELINE_DIR = os.path.dirname(SCRIPTS)
 
+SAMTOOLS = f"{PIPELINE_DIR}/tools/samtools-1.22.1/samtools"
+BCFTOOLS = f"{PIPELINE_DIR}/tools/bcftools-1.22/bin/bcftools"
+MOSDEPTH = f"{PIPELINE_DIR}/tools/mosdepth_v0.3.11/mosdepth"
 
 # ---------------------------
 # Helper functions

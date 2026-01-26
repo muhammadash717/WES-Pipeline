@@ -91,13 +91,18 @@ FASTQC="${PIPELINE_DIR}/tools/FastQC/fastqc"
 BWA_MEM2="${PIPELINE_DIR}/tools/bwa-mem2-2.2.1_x64-linux/bwa-mem2"
 [[ -f $BWA_MEM2 ]] || { echo "ERROR: BWA-MEM2 executable not found!" >&2; exit 1; }
 
-INTERVALS_BED="${PIPELINE_DIR}/tools/twist_exome_bed_files/hg38_exome_v2.0.2_flanking_100bp.bed"  # For CNVs (not used)
 INTERVALS="${PIPELINE_DIR}/tools/twist_exome_bed_files/hg38_exome_v2.0.2_flanking_100bp"          # Splitted by chromosome (*_chr10.bed)
+[[ -f "${INTERVALS}_chr10.bed" ]] || { echo "ERROR: Splitted Intervals are not found!" >&2; exit 1; }
+
 INTERVALS_20bp="${PIPELINE_DIR}/tools/twist_exome_bed_files/hg38_exome_v2.0.2_flanking_20bp.bed"  # For the SNVs
 [[ -f $INTERVALS_20bp ]] || { echo "ERROR: 20bp Intervals BED file not found!" >&2; exit 1; }
 
-KNOWN_SITES_1="${PIPELINE_DIR}/known_sites/Homo_sapiens_assembly38.known_sites"
-KNOWN_SITES_2="${PIPELINE_DIR}/known_sites/Homo_sapiens_assembly38.known_indels"
+KNOWN_SITES_1="${PIPELINE_DIR}/tools/known_sites/Homo_sapiens_assembly38.known_sites"
+KNOWN_SITES_2="${PIPELINE_DIR}/tools/known_sites/Homo_sapiens_assembly38.known_indels"
+
+[[ -f ${KNOWN_SITES_1}.chr10.vcf.gz ]] || { echo "ERROR: Known Sites files are not found!" >&2; exit 1; }
+[[ -f ${KNOWN_SITES_2}.chr10.vcf.gz ]] || { echo "ERROR: Known INDELS files are not found!" >&2; exit 1; }
+
 
 CHROMOSOMES=(1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 X Y M)
 CHRS=$((${#CHROMOSOMES[@]} - 2)) # exclude small chromosomes (M and Y)
@@ -242,7 +247,7 @@ whatshap phase --output ${OUTPUT_DIR}/vcf/${SAMPLE_NAME}.phased.chr${i}.vcf.gz \
     --reference ${REF} --chromosome chr${i} \
     ${OUTPUT_DIR}/vcf/${SAMPLE_NAME}.hard-filtered.chr${i}.vcf.gz \
     ${OUTPUT_DIR}/bam/${SAMPLE_NAME}.exonic.chr${i}.bam &> ${OUTPUT_DIR}/logs/07_Phasing_chr${i}.log
-)
+) &
 done
 wait
 )
@@ -261,6 +266,7 @@ echo -ne "[`date`]\tStep 8: Chromosomes Merging... "
     ${BCFTOOLS} view -o ${OUTPUT_DIR}/vcf/${SAMPLE_NAME}.vcf.gz -Oz -R ${INTERVALS_20bp} --threads ${THREADS} ${OUTPUT_DIR}/vcf/${SAMPLE_NAME}.phased.vcf.gz
     ${TABIX} ${OUTPUT_DIR}/vcf/${SAMPLE_NAME}.vcf.gz
 
+    Rscript ${SCRIPTS}/calc_cn.R --bam ${OUTPUT_DIR}/bam/${SAMPLE_NAME}.exonic.bam --bed ${INTERVALS_20bp} --output ${OUTPUT_DIR}/qc_metrics/${SAMPLE_NAME} &
     python3 ${SCRIPTS}/wes_qc.py --bam ${OUTPUT_DIR}/bam/${SAMPLE_NAME}.exonic.bam --vcf ${OUTPUT_DIR}/vcf/${SAMPLE_NAME}.vcf.gz --out ${OUTPUT_DIR}/qc_metrics/${SAMPLE_NAME}_QC.txt --bed ${INTERVALS_20bp} &
 
 ) &> ${OUTPUT_DIR}/logs/08_ChromosomesMerging.log

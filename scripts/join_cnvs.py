@@ -116,7 +116,7 @@ grouped['Length'] = grouped['End'] - grouped['Start']
 grouped['Bin_size'] = bin_size
 
 # Keep only the necessary columns
-grouped = grouped.loc[:,["Bin_size", "Chromosome", "Start", "End", "Type", "Classification", "gene_symbol", "Zygosity", "Length", "Depth", "Quality_per_size", "Dosage", "Score", 'OMIM_gene', "OMIM", "Gene_description", 'Diseases_description', 'HPO_Terms']]
+grouped = grouped.loc[:,["Bin_size", "Chromosome", "Start", "End", "Type", "Classification", "gene_symbol", "Zygosity", "OMIM", 'OMIM_gene', "Length", "Depth", "Quality_per_size", "Dosage", "Score", "Gene_description", 'Diseases_description', 'HPO_Terms']]
 
 # Remove Benign CNVs
 grouped = grouped[grouped["Classification"] != "Benign"]
