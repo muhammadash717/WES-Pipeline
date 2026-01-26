@@ -5,3 +5,4 @@ tools
 venv
 scripts/genes_to_all_phenotypes.tsv
 scripts/gene_hpo_omim.tsv
+HPO
