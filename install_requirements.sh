@@ -132,4 +132,5 @@ bash ./scripts/download_bed_file.sh \
     "${WORKING_DIR}/twist_exome_bed_files"
     
 chown -R $SUDO_USER:$SUDO_USER "${WORKING_DIR}"
+
 echo "=== Installation completed successfully! ==="
