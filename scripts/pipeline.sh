@@ -92,9 +92,11 @@ BWA_MEM2="${PIPELINE_DIR}/tools/bwa-mem2-2.2.1_x64-linux/bwa-mem2"
 [[ -f $BWA_MEM2 ]] || { echo "ERROR: BWA-MEM2 executable not found!" >&2; exit 1; }
 
 INTERVALS="${PIPELINE_DIR}/tools/twist_exome_bed_files/hg38_exome_v2.0.2_flanking_100bp"          # Splitted by chromosome (*_chr10.bed)
+# INTERVALS="${PIPELINE_DIR}/tools/bgi_bed_files/BGI_Exome_V5_kit_flanking_100bp"
 [[ -f "${INTERVALS}_chr10.bed" ]] || { echo "ERROR: Splitted Intervals are not found!" >&2; exit 1; }
 
 INTERVALS_20bp="${PIPELINE_DIR}/tools/twist_exome_bed_files/hg38_exome_v2.0.2_flanking_20bp.bed"  # For the SNVs
+# INTERVALS_20bp="${PIPELINE_DIR}/tools/bgi_bed_files/BGI_Exome_V5_kit_flanking_20bp.bed"
 [[ -f $INTERVALS_20bp ]] || { echo "ERROR: 20bp Intervals BED file not found!" >&2; exit 1; }
 
 KNOWN_SITES_1="${PIPELINE_DIR}/tools/known_sites/Homo_sapiens_assembly38.known_sites"
@@ -281,16 +283,13 @@ echo -ne "[`date`]\tStep 9: Gender Determination... "
 GENDER=$(cat ${OUTPUT_DIR}/qc_metrics/${SAMPLE_NAME}.gender_determination.txt | grep -oP "Gender:\s\K(.*)")
 echo "(${GENDER})"
 
-### Step 10: Annotation & Clinical Filtering... ###
+### Step 10: Annotation... ###
 GENEBE_START=$(date +%s)
-echo -ne "[`date`]\tStep 10: Annotation & Clinical Filtering... "
+echo -ne "[`date`]\tStep 10: Annotation... "
 (
-    python3 ${SCRIPTS}/genebe_annotate_vcf.py --input_vcf ${OUTPUT_DIR}/vcf/${SAMPLE_NAME}.vcf.gz --output_tsv ${OUTPUT_DIR}/annotation/${SAMPLE_NAME}.tsv
-    python3 ${SCRIPTS}/genebe2html.py ${OUTPUT_DIR}/annotation/${SAMPLE_NAME}.tsv ${HPO}
-    ( echo -e "Gene\tCount"; cut -f6 ${OUTPUT_DIR}/annotation/${SAMPLE_NAME}.clinical.tsv | grep -oP '>\K[A-Z0-9-]+' | sort | uniq -c | \
-      sed -E 's/^\s+//g' | sort -nr | awk -F' ' 'BEGIN {OFS="\t"} {print $2, $1}' ) > ${OUTPUT_DIR}/annotation/${SAMPLE_NAME}.gene_counts.tsv
-
-) &> ${OUTPUT_DIR}/logs/10_Annotation_ClinicalFiltering.log
+    python3 ${SCRIPTS}/annotate_vcf.py ${OUTPUT_DIR}/vcf/${SAMPLE_NAME}.vcf.gz --output ${OUTPUT_DIR}/annotation/${SAMPLE_NAME} --gender ${GENDER} \
+            --hpo-data ${SCRIPTS}/gene_hpo_omim.tsv --genes-phenotypes ${SCRIPTS}/genes_to_all_phenotypes.tsv --patient-phenotype "${HPO}" --verbose 1
+) &> ${OUTPUT_DIR}/logs/10_Annotation.log
 print_elapsed_time "$GENEBE_START"
 
 ### Step 11: CNV Analysis... ###
@@ -310,6 +309,10 @@ echo -ne "[`date`]\tStep 12: Cleaning up... "
     grep -v density ${OUTPUT_DIR}/qc_metrics/${SAMPLE_NAME}.gender_determination.txt | sed -E 's/: /:\t/g' >> ${OUTPUT_DIR}/qc_metrics/${SAMPLE_NAME}_QC.txt &
 
     # Cleaning up the bam and vcf files
+    mv ${OUTPUT_DIR}/bam/${SAMPLE_NAME}.bqsr.bam ${OUTPUT_DIR}/bam/${SAMPLE_NAME}.bam
+    mv ${OUTPUT_DIR}/bam/${SAMPLE_NAME}.bqsr.bam.bai ${OUTPUT_DIR}/bam/${SAMPLE_NAME}.bam.bai
+    # rm ${OUTPUT_DIR}/bam/${SAMPLE_NAME}.sorted.*
+    rm ${OUTPUT_DIR}/bam/${SAMPLE_NAME}.dedup.*
     rm ${OUTPUT_DIR}/bam/${SAMPLE_NAME}.*chr* &
     rm ${OUTPUT_DIR}/vcf/${SAMPLE_NAME}.*chr*
     rm ${OUTPUT_DIR}/vcf/${SAMPLE_NAME}.phased* &
@@ -323,24 +326,27 @@ echo -ne "[`date`]\tStep 12: Cleaning up... "
     cat $(ls -v ${OUTPUT_DIR}/logs/07_Phasing_chr*.log) > ${OUTPUT_DIR}/logs/07_Phasing.log && rm ${OUTPUT_DIR}/logs/07_Phasing_chr*.log &
 
     # Cleaning up the annotation output
-    rm ${OUTPUT_DIR}/annotation/${SAMPLE_NAME}.tsv &
-    gzip -f ${OUTPUT_DIR}/annotation/${SAMPLE_NAME}.hpo_omim.tsv &
+    gzip -f ${OUTPUT_DIR}/annotation/${SAMPLE_NAME}_raw.tsv &
+
+    # Cleaning CNV bin directories
+    rm -rf ${OUTPUT_DIR}/cnv/bin_*
 
     # Cleaning up the QC processes
+    rm ${OUTPUT_DIR}/qc_metrics/${SAMPLE_NAME}_data.tsv ${OUTPUT_DIR}/qc_metrics/${SAMPLE_NAME}_chrom_summary.tsv
     cat $(ls -v ${OUTPUT_DIR}/qc_metrics/${SAMPLE_NAME}.bqsr_data.chr*.table) > ${OUTPUT_DIR}/qc_metrics/${SAMPLE_NAME}.bqsr_data.table && rm ${OUTPUT_DIR}/qc_metrics/${SAMPLE_NAME}.bqsr_data.chr*.table &
     rm ${OUTPUT_DIR}/qc_metrics/*_fastqc.zip &
 
     wait
-
-    rmdir ${TMP_DIR}
 ) &> ${OUTPUT_DIR}/logs/12_CleaningUp.log
 print_elapsed_time "$CLEANUP_START"
 
 grep -iP "error|warn|fail|exception|critical|fatal|trace|stack" ${OUTPUT_DIR}/logs/*.log | cut -d' ' -f2- | sort | uniq >> ${OUTPUT_DIR}/${SAMPLE_NAME}.stderr.log
 touch ${OUTPUT_DIR}/analysis_complete.txt
 
+rmdir ${TMP_DIR} || echo "Some errors occurred. Temporary directory is not empty. Please check ${OUTPUT_DIR}/${SAMPLE_NAME}.stderr.log"
+
 echo -ne "[`date`]\tPipeline complete. GoodBye! "
 print_elapsed_time "$START"
 
 # Deactivate the virtual environment (if activated)
-[[ -f "${PIPELINE_DIR}/venv/bin/activate" ]] && deactivate
+#[[ -f "${PIPELINE_DIR}/venv/bin/activate" ]] && deactivate

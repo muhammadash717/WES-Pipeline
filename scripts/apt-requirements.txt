@@ -3,6 +3,7 @@ acl
 adduser
 adwaita-icon-theme
 aglfn
+aiohttp
 alsa-topology-conf
 alsa-ucm-conf
 amd64-microcode

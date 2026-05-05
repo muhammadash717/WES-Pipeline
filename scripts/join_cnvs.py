@@ -16,6 +16,25 @@ def get_zygosity(rd):
     else:
         return ["high_copy_gain", "high_copy_gain"]
 
+# --- Cytoband lookup function ---
+def get_cytoband(chrom, start, end, cytoband_df):
+    chrom = str(chrom)
+
+    if not chrom.startswith("chr"):
+        chrom = "chr" + chrom
+
+    hits = cytoband_df[(cytoband_df["chrom"] == chrom) &
+        (cytoband_df["chromStart"] < int(end)) &
+        (cytoband_df["chromEnd"] > int(start))]
+
+    if hits.empty:
+        return "."
+
+    bands = hits["band"].tolist()
+    chrom_label = chrom.replace("chr", "")
+
+    return chrom_label + f", {chrom_label}".join(bands)
+
 # ---- CONFIG ----
 annotated_cnvs_file = sys.argv[1]
 plain_cnvs_file = sys.argv[2]
@@ -23,6 +42,7 @@ output_file = sys.argv[3]
 
 # The path of this script (to get the required data files)
 script_path = os.path.dirname(os.path.realpath(__file__))
+pipeline_path = os.path.dirname(script_path)
 
 # Bin size
 bin_size = os.path.basename(plain_cnvs_file).split('.')[1]
@@ -102,6 +122,8 @@ for col in other_cols:
 grouped = merged_data.groupby(group_cols).agg(agg_dict).reset_index()
 
 # Add useful hyperlinks to some columns
+grouped['gene_name'] = grouped['gene_symbol']
+
 grouped['gene_symbol'] = grouped.apply(lambda row: ', '.join(
         f'<a href="https://omim.org/entry/{id.strip()}" target="_blank">{gene.strip()}</a>'
         for gene, id in zip(str(row['gene_symbol']).split(','), str(row['OMIM_gene']).split(','))), axis=1)
@@ -116,12 +138,23 @@ grouped['Length'] = grouped['End'] - grouped['Start']
 grouped['Bin_size'] = bin_size
 
 # Keep only the necessary columns
-grouped = grouped.loc[:,["Bin_size", "Chromosome", "Start", "End", "Type", "Classification", "gene_symbol", "Zygosity", "OMIM", 'OMIM_gene', "Length", "Depth", "Quality_per_size", "Dosage", "Score", "Gene_description", 'Diseases_description', 'HPO_Terms']]
+grouped = grouped.loc[:,["Bin_size", "Chromosome", "Start", "End", "Type", "Classification", "gene_symbol", "Zygosity", "OMIM", 'OMIM_gene', "Length", "Depth", "Quality_per_size", "Dosage", "Score", "Gene_description", 'Diseases_description', 'HPO_Terms', 'gene_name']]
 
 # Remove Benign CNVs
 grouped = grouped[grouped["Classification"] != "Benign"]
 
 grouped.rename(columns={ "gene_symbol": "Genes" }, inplace=True)
+
+# --- Annotate ---
+cytoband_df = pd.read_csv(f"{pipeline_path}/tools/SavvySuite/cytobands/cytoBand.txt",
+                          sep="\t", header=None, names=["chrom", "chromStart", "chromEnd", "band", "gieStain"])
+if not grouped.empty:
+    grouped["Cytoband"] = grouped.apply(
+        lambda row: get_cytoband(row["Chromosome"], row["Start"], row["End"], cytoband_df), 
+        axis=1
+    )
+else:
+    grouped["Cytoband"] = None # Or any default value you prefer
 
 # Save to output TSV
 grouped.to_csv(output_file, sep="\t", index=False)

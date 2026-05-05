@@ -74,4 +74,4 @@ with open(output_file, 'w', encoding="utf-8") as f:
     f.write(rendered_html)
 
 # Print completion message with output path
-print(f"HTML file has been saved to {output_file}")
+print(f"*** HTML file saved to: {output_file}")

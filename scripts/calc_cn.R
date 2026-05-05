@@ -138,8 +138,8 @@ ggsave(paste0(opt$output, "_cn_profile.png"), plot = p1, dpi = 300)
 p2 <- ggplot(chrom_summary, aes(x = seqnames, y = mean_cn)) +
   geom_col(fill = "#3498db", color = "black") +
   geom_text(aes(label = round(mean_cn, 2)), vjust = -0.5, size = 2) +
-  geom_hline(yintercept = 1.3, color = "red", linetype = "dashed", alpha = 0.9, linewidth = 0.3) +
-  geom_hline(yintercept = 2.7, color = "red", linetype = "dashed", alpha = 0.9, linewidth = 0.3) +
+  geom_hline(yintercept = 1.5, color = "red", linetype = "dashed", alpha = 0.9, linewidth = 0.3) +
+  geom_hline(yintercept = 2.5, color = "red", linetype = "dashed", alpha = 0.9, linewidth = 0.3) +
   theme_bw() +
   labs(title = paste("Mean Copy Number per Chromosome: ", basename(opt$bam)), x = "Chromosome", y = "Estimated Copy Number") +
   theme(axis.text.x = element_text(angle = 90, hjust = 1)) +

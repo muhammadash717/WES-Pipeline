@@ -12,10 +12,12 @@ def get_zygosity(genotype):
     return "heterozygous"
 
 # Function to extract the mane select transcript
-def keep_mane_select(dict_list):
+def keep_mane_select(dict_list, selected_transcript):
     if isinstance(dict_list, list):
         for d in dict_list:
             if "mane_select" in d and str(d["mane_select"])[0:3] == "NM_":
+                return d
+            if str(d["transcript"]) == selected_transcript:
                 return d
         return None
     elif isinstance(dict_list, dict):
@@ -44,7 +46,7 @@ script_path = os.path.dirname(os.path.realpath(__file__))
 
 # Load genebe TSV
 genebe_df = pd.read_csv(genebe_tsv, sep="\t", quotechar='"', keep_default_na=True, dtype = {"chr":str},
-                         na_values=['', '.', 'NA', 'N/A', 'nan', 'NaN', 'null'])
+                         na_values=['', '.', 'NA', 'N/A', 'nan', 'NaN', 'null'], low_memory=False)
 
 genebe_df["Zygosity"] = genebe_df["Genotype"].apply(get_zygosity)
 
@@ -81,6 +83,7 @@ else:
     merged_data["Matched_HPO_Count"] = ""
     merged_data["Matched_HPO_Terms"] = ""
 
+merged_data = merged_data.drop_duplicates(keep='last')
 merged_data.to_csv(tsv_output, sep='\t', index=False)
 
 # Performing clinical filtering (Class I, II, and III)
@@ -88,35 +91,39 @@ filtered_merged_data = merged_data[
     ~(merged_data['gnomad_genomes_af'] > 0.01) & ~(merged_data['gnomad_exomes_af'] > 0.01) &
     (merged_data['acmg_classification'] != 'Benign') & (merged_data['acmg_classification'] != 'Likely_benign') &
     (merged_data['effect'] != '3_prime_UTR_variant') & (merged_data['effect'] != '5_prime_UTR_variant') &
-    (merged_data['effect'] != 'intron_variant') & (merged_data['effect'] != 'synonymous_variant') &
+    (merged_data['effect'] != 'synonymous_variant') & #(merged_data['effect'] != 'intron_variant') & 
     (merged_data['effect'] != 'intragenic_variant') & (merged_data['effect'].fillna("Unknown") != 'Unknown') &
     (~merged_data['HPO_Terms'].isna()) & (~merged_data['OMIM'].isna())
 ]
 
 # Expand the consequences dictionary
+# filtered_merged_data.loc[:, 'genebe_transcript'] = filtered_merged_data['transcript']
 filtered_merged_data = filtered_merged_data.copy()
 filtered_merged_data["consequences"] = filtered_merged_data["consequences"].apply(ast.literal_eval)
-filtered_merged_data["consequences"] = filtered_merged_data["consequences"].apply(keep_mane_select)
+filtered_merged_data["consequences"] = filtered_merged_data.apply(lambda row: keep_mane_select(row["consequences"], row["transcript"]), axis=1)
 assert filtered_merged_data["consequences"].apply(lambda x: isinstance(x, dict) or pd.isna(x)).all()
-conseq_expanded = pd.json_normalize(filtered_merged_data["consequences"]).drop(columns=["consequences", "gene_hgnc_id", "gene_symbol", "transcript"], errors='ignore')
+conseq_expanded = pd.json_normalize(filtered_merged_data["consequences"]).drop(columns=["consequences", "gene_hgnc_id", "gene_symbol"], errors='ignore')
 
 result = pd.concat([filtered_merged_data.reset_index(drop=True), conseq_expanded.reset_index(drop=True)], axis=1)
 
 # Add useful hyperlinks to some columns
+result["gene_name"] = result["gene_symbol"]
 result["OMIM_gene"] = result["OMIM_gene"].astype(str).str.replace(".0", "", regex=False)
 result["gene_hgnc_id"] = result["gene_hgnc_id"].astype(str).str.replace(".0", "", regex=False)
 result["gene_symbol"] = '<a href="https://omim.org/entry/' + result["OMIM_gene"].astype(str) + '" target="_blank">' + result["gene_symbol"].astype(str) + '</a>'
 result["gene_hgnc_id"] = '<a href="https://www.genenames.org/data/gene-symbol-report/#!/hgnc_id/' + result["gene_hgnc_id"].astype(str) + '" target="_blank">' + result["gene_hgnc_id"].astype(str) + '</a>'
 result["dbsnp"] = '<a href="https://www.ncbi.nlm.nih.gov/snp/' + result["dbsnp"].astype(str) + '" target="_blank">' + result["dbsnp"].astype(str) + '</a>'
-result["mane_select"] = '<a href="https://www.ncbi.nlm.nih.gov/nuccore/' + result["mane_select"].astype(str) + '" target="_blank">' + result["mane_select"].astype(str) + '</a>'
+# result["mane_select"] = '<a href="https://www.ncbi.nlm.nih.gov/nuccore/' + result["mane_select"].astype(str) + '" target="_blank">' + result["mane_select"].astype(str) + '</a>'
 result["OMIM_IDs"] = result["OMIM_IDs"].apply(lambda row: '<br>'.join(
     f'<a href="https://omim.org/entry/{i.replace("OMIM:", "").strip()}" target="_blank">{i.strip()}</a>'
     for i in str(row).split(';')) if pd.notnull(row) else '')
 
+result["Franklin_Class"] = '<a href="https://franklin.genoox.com/clinical-db/variant/snp/' + result["chr"].astype(str) + '-' + result["pos"].astype(str) + '-' + result["ref"].astype(str) + '-' + result["alt"].astype(str) + '-hg38" target="_blank">link</a>'
+
 # Keep only the necessary columns
 result = result.loc[:,[
     "chr", "pos", "ref", "alt", "acmg_classification", "gene_symbol", "Zygosity", "Genotype", "OMIM", "OMIM_IDs", "effect", "hgvs_c", "hgvs_p",
-    "Matched_HPO_Count", "Matched_HPO_Terms", "gene_hgnc_id", "mane_select", "exon_rank", "exon_count", "intron_rank",
+    "Matched_HPO_Count", "Matched_HPO_Terms", "Franklin_Class", "gene_hgnc_id", "mane_select", "transcript", "exon_rank", "exon_count", "intron_rank",
     "clinvar_disease", "clinvar_classification", "clinvar_review_status", "clinvar_submissions_summary", "acmg_score", "acmg_criteria", "acmg_by_gene", "dbsnp",
     "revel_score", "revel_prediction", "alphamissense_score", "alphamissense_prediction", "bayesdelnoaf_score", "bayesdelnoaf_prediction", "phylop100way_score",
     "phylop100way_prediction", "spliceai_max_score", "spliceai_max_prediction", "dbscsnv_ada_score", "dbscsnv_ada_prediction", "apogee2_score", "apogee2_prediction",
@@ -126,7 +133,7 @@ result = result.loc[:,[
     "allele_count_reference_population", "frequency_reference_population", "hom_count_reference_population", "gnomad_exomes_ac", "gnomad_exomes_homalt",
     "gnomad_genomes_ac", "gnomad_genomes_homalt", "gnomad_mito_heteroplasmic", "gnomad_mito_homoplasmic", "mitotip_prediction", "mitotip_score",
     "protein_coding", "protein_id", "splice_prediction_selected", "splice_score_selected", "splice_source_selected", "strand", "transcript_support_level",
-    "Diseases_description", "HPO_IDs", "HPO_Terms", "Gene_description"]]
+    "Diseases_description", "HPO_IDs", "HPO_Terms", "Gene_description", "gene_name"]]
 
 # Sort by the number of HPO matches (descending)
 result = result.sort_values(by="Matched_HPO_Count", key=lambda col: pd.to_numeric(col, errors="coerce"), ascending=False)

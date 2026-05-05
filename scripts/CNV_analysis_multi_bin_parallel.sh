@@ -111,15 +111,23 @@ done
 # === Wait for all background jobs ===
 wait
 
-# Perform the HTML rendering
-head -n 1 ${outdir}/bin_${bin_sizes[0]}/${sample}.${bin_sizes[0]}.CNVs.tsv > ${outdir}/${sample}_CNVs.tsv
+# Aggregate all bins to one file
+head -n 1 ${outdir}/bin_${bin_sizes[0]}/${sample}.${bin_sizes[0]}.CNVs.tsv > ${outdir}/${sample}_all_bins.tsv
 
 for d_size in "${bin_sizes[@]}"; do
-    tail -n +2 ${outdir}/bin_${d_size}/${sample}.${d_size}.CNVs.tsv >> ${outdir}/${sample}_CNVs.tsv
+    tail -n +2 ${outdir}/bin_${d_size}/${sample}.${d_size}.CNVs.tsv >> ${outdir}/${sample}_all_bins.tsv
 done
 
+( echo -e "Gene\tCount"; cut -f19 ${outdir}/${sample}_all_bins.tsv | sed 's/, /\n/g' | sort | uniq -c | \
+sed -E 's/^\s+//g' | sort -nr | awk -F' ' 'BEGIN {OFS="\t"} {print $2, $1}' ) > ${outdir}/${sample}_cnv_counts.tsv
+
+# Run the GeneBe API
+python3 ${PIPELINE_DIR}/scripts/cnv_genebe.py ${outdir}/${sample}_all_bins.tsv > ${outdir}/${sample}_CNVs.tsv
+
+# Perform the HTML rendering
 python3 ${PIPELINE_DIR}/scripts/html_render.py ${outdir}/${sample}_CNVs.tsv ${PIPELINE_DIR}/scripts/cnv_template.html
 
+rm ${outdir}/${sample}_all_bins.tsv
 
 echo "=========================================="
 echo "All CNV analyses completed successfully for all bin sizes!"

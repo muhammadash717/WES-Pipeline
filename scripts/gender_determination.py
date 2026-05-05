@@ -103,7 +103,5 @@ with open(gender_output, "w") as out:
     if x_aut < 0.72 and y_aut > 0.12:
         out.write("\nNote: High Y/Aut ratio suggests an extra Y-chromosome; suspecting Jacob's syndrome (47,XYY).\n")
 
-
 print(f"Results written to {gender_output}")
-
 os.remove(tsv_idxstats)
